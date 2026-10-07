@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Informasi Pengelolaan Nilai Rapor - SMAN 1 SIMPANG OKU SELATAN</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS (xlsx) CDN untuk Ekspor & Impor Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- SweetAlert2 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Firebase Compat SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
+
+    <!-- Header / Navbar -->
+    <header class="bg-indigo-700 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-graduation-cap text-2xl text-yellow-300"></i>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold leading-tight">Sistem Informasi Pengelolaan Nilai Rapor</h1>
+                    <p class="text-xs text-indigo-200 font-medium">SMAN 1 SIMPANG OKU SELATAN</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button id="btnNavSiswa" onclick="switchTab('siswa')" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-white text-indigo-700 shadow hover:bg-indigo-50 transition">
+                    <i class="fa-solid fa-user-pen mr-1"></i> Mode Siswa
+                </button>
+                <button id="btnNavOperator" onclick="openOperatorModal()" class="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-indigo-800 text-indigo-100 hover:bg-indigo-900 transition">
+                    <i class="fa-solid fa-user-gear mr-1"></i> Mode Operator
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
+
+        <!-- Status Koneksi Firebase Banner -->
+        <div id="firebaseStatus" class="mb-4 p-3 rounded-lg text-xs sm:text-sm flex items-center justify-between bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                <span id="firebaseStatusText">Sistem terhubung ke Firebase Firestore secara Real-Time.</span>
+            </div>
+        </div>
+
+        <!-- ================= MODE SISWA ================= -->
+        <section id="viewSiswa" class="space-y-6">
+            <!-- Card Pencarian NISN / Halaman Depan Login -->
+            <div id="cardCariNISN" class="bg-white p-6 sm:p-8 rounded-2xl shadow-md border border-slate-100 max-w-2xl mx-auto text-center space-y-5">
+                <div class="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="fa-solid fa-school text-3xl"></i>
+                </div>
+                
+                <div class="space-y-1">
+                    <span class="inline-block px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full tracking-wide">
+                        SMAN 1 SIMPANG OKU SELATAN
+                    </span>
+                    <h2 class="text-xl sm:text-2xl font-black text-slate-800">Sistem Informasi Pengelolaan Nilai Rapor</h2>
+                    <p class="text-xs sm:text-sm font-semibold text-indigo-600">
+                        Pengumpulan Nilai Rapor Semester 1 & 2 Saat di kelas X untuk siswa Kelas XII Tahun Ajaran 2025/2026
+                    </p>
+                </div>
+
+                <div class="pt-2">
+                    <p class="text-xs text-slate-500 mb-3">Masukkan NISN Anda untuk memuat data siswa, mengisi nilai, atau memperbarui nilai lama.</p>
+                    <form onsubmit="handleCariNISN(event)" class="flex flex-col sm:flex-row gap-2 max-w-lg mx-auto">
+                        <input type="text" id="inputNISN" placeholder="Masukkan NISN Siswa..." required 
+                            class="flex-1 px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none text-center font-mono text-lg font-bold">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-xl transition shadow flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-magnifying-glass"></i> Cari NISN
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Informasi Developer / Pengelola Sistem -->
+                <div class="pt-4 border-t border-slate-100 text-xs text-slate-500 font-medium">
+                    <i class="fa-solid fa-code text-indigo-500 mr-1"></i> Dikembangkan oleh: <span class="font-bold text-slate-700">WASIS WAHYUDIN, S.Kom</span> <span class="text-slate-400">(Operator & Pengelola Sistem)</span>
+                </div>
+            </div>
+
+            <!-- Form Input Nilai (Tersembunyi Awalnya) -->
+            <div id="formNilaiSiswa" class="hidden bg-white p-6 sm:p-8 rounded-2xl shadow-md border border-slate-100">
+                <!-- Info Siswa Banner -->
+                <div class="bg-gradient-to-r from-indigo-50 to-blue-50 p-4 rounded-xl border border-indigo-100 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-indigo-600 text-white font-bold rounded-full flex items-center justify-center text-lg shadow">
+                            <span id="lblClassBadge">X-1</span>
+                        </div>
+                        <div>
+                            <h3 id="lblNamaSiswa" class="text-lg font-bold text-indigo-950">Nama Siswa</h3>
+                            <p class="text-xs text-slate-600">NISN: <span id="lblNISNSiswa" class="font-mono font-bold">1001</span> | Kelas: <span id="lblKelasSiswa" class="font-semibold">X-1</span></p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="lblStatusSimpan" class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                            <i class="fa-solid fa-clock mr-1"></i> Belum Disimpan
+                        </span>
+                        <!-- Tombol Close / Selesai -->
+                        <button type="button" onclick="selesaiInputSiswa()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                            <i class="fa-solid fa-xmark"></i> Selesai / Close
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Notifikasi Jika Mode Perbaikan Nilai -->
+                <div id="alertPerbaikanNilai" class="hidden mb-4 p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-blue-600 text-base"></i>
+                    <span><strong>Mode Perbaikan Nilai:</strong> Nilai yang pernah Anda simpan sebelumnya telah dimuat. Silakan ubah angka pada kolom yang ingin diperbaiki lalu klik tombol <strong>Simpan Nilai Ke Firebase</strong>.</span>
+                </div>
+
+                <form onsubmit="handleSimpanNilai(event)">
+                    <div class="overflow-x-auto mb-6 border border-slate-100 rounded-xl">
+                        <table class="w-full text-left text-sm border-collapse">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-700 border-b border-slate-200">
+                                    <th class="p-3 font-bold w-12 text-center">No</th>
+                                    <th class="p-3 font-bold">Mata Pelajaran (Kurikulum Merdeka)</th>
+                                    <th class="p-3 font-bold w-36 text-center">Nilai Semester 1 Kls X</th>
+                                    <th class="p-3 font-bold w-36 text-center">Nilai Semester 2 Kls X</th>
+                                    <th class="p-3 font-bold w-28 text-center">Rata-Rata</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodySubjectInputs" class="divide-y divide-slate-100">
+                                <!-- Generasi Baris Mapel via JS -->
+                            </tbody>
+                            <tfoot>
+                                <tr class="bg-slate-50 font-bold text-slate-800 border-t border-slate-200">
+                                    <td colspan="2" class="p-3 text-right">Rata-Rata Overall:</td>
+                                    <td id="avgSem1Total" class="p-3 text-center text-indigo-700 font-mono">0.0</td>
+                                    <td id="avgSem2Total" class="p-3 text-center text-indigo-700 font-mono">0.0</td>
+                                    <td id="avgGrandTotal" class="p-3 text-center text-emerald-700 font-mono font-bold text-base">0.0</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-100">
+                        <button type="button" onclick="selesaiInputSiswa()" class="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 transition font-semibold text-sm flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-arrow-left"></i> Batal / Keluar
+                        </button>
+                        
+                        <div class="flex w-full sm:w-auto gap-2">
+                            <button type="submit" id="btnSimpanNilai" class="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition font-bold shadow-md flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Simpan Nilai Ke Firebase
+                            </button>
+                            <button type="button" id="btnSelesaiClose" onclick="selesaiInputSiswa()" class="hidden px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white transition font-bold shadow-md flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-circle-check text-emerald-400"></i> Selesai / Close
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- ================= MODE OPERATOR / DASHBOARD REKAP ================= -->
+        <section id="viewOperator" class="hidden space-y-6">
+            <!-- Header Dashboard Operator -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800"><i class="fa-solid fa-chart-line text-indigo-600 mr-2"></i> Dashboard Operator - Rekapitulasi Rapor</h2>
+                    <p class="text-xs text-slate-500">Kelola Master Data Siswa, Pantau Pengisian, & Ekspor Format Lager Excel</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <!-- Upload Excel Master Siswa -->
+                    <input type="file" id="fileImportMaster" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleImportMasterExcel(event)">
+                    <button onclick="document.getElementById('fileImportMaster').click()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow transition flex items-center gap-2">
+                        <i class="fa-solid fa-file-import"></i> Upload Master Data Excel
+                    </button>
+                    
+                    <!-- Download Excel Lager -->
+                    <button onclick="downloadFormatLagerExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow transition flex items-center gap-2">
+                        <i class="fa-solid fa-file-excel"></i> Download Rekap (.xlsx)
+                    </button>
+                    <button onclick="hapusSemuaNilaiOperator()" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow transition flex items-center gap-2">
+                        <i class="fa-solid fa-trash-can"></i> Hapus Semua Nilai
+                    </button>
+                    <button onclick="toggleConfigModal()" class="bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow transition flex items-center gap-2">
+                        <i class="fa-solid fa-gear"></i> Konfigurasi Firebase
+                    </button>
+                    <button onclick="logoutOperator()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition">
+                        Keluar Mode Operator
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Ringkasan -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <p class="text-xs text-slate-500 font-semibold mb-1">Total Master Siswa</p>
+                    <h3 id="statTotalSiswa" class="text-2xl font-black text-slate-800">240</h3>
+                    <p class="text-[10px] text-slate-400 mt-1">Terdaftar di Database</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <p class="text-xs text-emerald-600 font-semibold mb-1">Sudah Mengisi</p>
+                    <h3 id="statSudahIsi" class="text-2xl font-black text-emerald-600">0</h3>
+                    <p id="statSudahIsiPct" class="text-[10px] text-emerald-500 mt-1">0% dari total</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <p class="text-xs text-amber-600 font-semibold mb-1">Belum Mengisi</p>
+                    <h3 id="statBelumIsi" class="text-2xl font-black text-amber-600">240</h3>
+                    <p id="statBelumIsiPct" class="text-[10px] text-amber-500 mt-1">100% dari total</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <p class="text-xs text-indigo-600 font-semibold mb-1">Rata-Rata Angkatan</p>
+                    <h3 id="statRataAngkatan" class="text-2xl font-black text-indigo-600">0.0</h3>
+                    <p class="text-[10px] text-indigo-400 mt-1">Akumulasi Seluruh Nilai</p>
+                </div>
+            </div>
+
+            <!-- Filter & Tabel Rekap -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between gap-3">
+                    <div class="flex flex-wrap gap-2">
+                        <select id="filterKelas" onchange="renderTabelRekapOperator()" class="px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="ALL">Semua Kelas</option>
+                        </select>
+                        <select id="filterStatus" onchange="renderTabelRekapOperator()" class="px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="ALL">Semua Status</option>
+                            <option value="SUDAH">Sudah Mengisi</option>
+                            <option value="BELUM">Belum Mengisi</option>
+                        </select>
+                    </div>
+                    <div class="relative min-w-[240px]">
+                        <input type="text" id="searchOperator" oninput="renderTabelRekapOperator()" placeholder="Cari Nama / NISN..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-x-auto border border-slate-100 rounded-xl">
+                    <table class="w-full text-left text-sm border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700">
+                                <th class="p-3 w-12 text-center">NO</th>
+                                <th class="p-3 w-28">NISN</th>
+                                <th class="p-3">NAMA SISWA</th>
+                                <th class="p-3 w-24 text-center">KELAS</th>
+                                <th class="p-3 w-32 text-center">STATUS</th>
+                                <th class="p-3 w-28 text-center">RATA SEM 1</th>
+                                <th class="p-3 w-28 text-center">RATA SEM 2</th>
+                                <th class="p-3 w-28 text-center font-bold">RATA GAB</th>
+                                <th class="p-3 w-24 text-center">AKSI</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyOperatorRekap" class="divide-y divide-slate-100">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Konfigurasi Firebase -->
+    <div id="modalConfig" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-fire text-orange-500 mr-2"></i> Pengaturan Firebase Firestore</h3>
+                <button onclick="toggleConfigModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <p class="text-xs text-slate-500">
+                Tempelkan objek konfigurasi Firebase proyek Anda di bawah ini agar data dapat tersimpan secara online ke cloud Firebase.
+            </p>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Firebase Config (JSON Object):</label>
+                <textarea id="txtFirebaseConfig" rows="7" class="w-full font-mono text-xs p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "proyek-anda.firebaseapp.com",
+  "projectId": "proyek-anda",
+  "storageBucket": "proyek-anda.appspot.com",
+  "messagingSenderId": "123456789",
+  "appId": "1:123456789:web:abcdef"
+}'></textarea>
+            </div>
+            <div class="flex justify-between items-center pt-2">
+                <button onclick="resetDefaultFirebase()" class="text-xs text-rose-600 font-semibold hover:underline">Reset Ke Default</button>
+                <div class="space-x-2">
+                    <button onclick="toggleConfigModal()" class="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-300">Batal</button>
+                    <button onclick="saveFirebaseConfig()" class="px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 shadow">Simpan & Muat Ulang</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal PIN Operator -->
+    <div id="modalPinOperator" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-xs w-full p-6 text-center space-y-4">
+            <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto">
+                <i class="fa-solid fa-lock text-xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800">Akses Mode Operator</h3>
+            <p class="text-xs text-slate-500">Masukkan Password untuk membuka Dashboard Operator.</p>
+            <input type="password" id="inputPinOperator" placeholder="Password (Operator)" class="w-full text-center text-lg font-bold tracking-widest px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            <div class="flex gap-2">
+                <button onclick="closeOperatorModal()" class="flex-1 py-2 text-xs font-semibold text-slate-600 border border-slate-300 rounded-xl">Batal</button>
+                <button onclick="submitPinOperator()" class="flex-1 py-2 text-xs font-bold bg-indigo-600 text-white rounded-xl shadow hover:bg-indigo-700">Masuk</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 transform translate-y-20 opacity-0 transition-all duration-300 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2">
+        <i id="toastIcon" class="fa-solid fa-circle-info text-indigo-400"></i>
+        <span id="toastMsg">Pesan Notifikasi</span>
+    </div>
+
+    <!-- SCRIPT LOGIC -->
+    <script>
+        // =========================================================================
+        // 1. CONSTANTS & INITIAL MASTER DATA
+        // =========================================================================
+        const MAPEL_LIST = [
+            { id: "PAI", label: "PAI (Pendidikan Agama dan Budi Pekerti)" },
+            { id: "PANCASILA", label: "PENDIDIKAN PANCASILA" },
+            { id: "BIND", label: "B.INDONESIA" },
+            { id: "MTK", label: "MTK UMUM" },
+            { id: "IPA", label: "IPA" },
+            { id: "IPS", label: "IPS" },
+            { id: "BING", label: "B.INGGRIS" },
+            { id: "PENJAS", label: "PENJAS" },
+            { id: "INFORMATIKA", label: "INFORMATIKA" },
+            { id: "SENI", label: "SENI BUDAYA" },
+            { id: "KDKA", label: "KDKA (Dasar Keahlian)" }
+        ];
+
+        // Master Data Siswa Default
+        let masterSiswa = [];
+        const classes = ["X-1", "X-2", "X-3", "X-4", "X-5", "X-6"];
+        let count = 1;
+        classes.forEach(cls => {
+            for(let i = 1; i <= 40; i++) {
+                const nisn = (1000 + count).toString();
+                masterSiswa.push({
+                    nisn: nisn,
+                    nama: `Siswa Contoh ${cls} - Urut ${i < 10 ? '0' + i : i}`,
+                    kelas: cls,
+                    nilai: null
+                });
+                count++;
+            }
+        });
+
+        let activeSiswa = null;
+        let isFirebaseActive = false;
+        let db = null;
+        let isOperatorLoggedIn = false;
+
+        // =========================================================================
+        // 2. FIREBASE INITIALIZATION & SINKRONISASI
+        // =========================================================================
+        function initFirebase() {
+            loadLocalBackupData();
+
+            const savedConfigStr = localStorage.getItem("FIREBASE_CONFIG_RAPOR");
+            let firebaseConfig = null;
+
+            if (savedConfigStr) {
+                try { firebaseConfig = JSON.parse(savedConfigStr); } catch(e){}
+            }
+
+            if (!firebaseConfig) {
+                firebaseConfig = {
+                    apiKey: "AIzaSyDemoKeyForClassXGradesCollectionOnly",
+                    authDomain: "demo-raport-x.firebaseapp.com",
+                    projectId: "demo-raport-x",
+                    storageBucket: "demo-raport-x.appspot.com",
+                    messagingSenderId: "1234567890",
+                    appId: "1:1234567890:web:demo123456"
+                };
+            }
+
+            try {
+                if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                
+                // Realtime Listener Master Data
+                db.collection("master_siswa_list").doc("active").onSnapshot(doc => {
+                    if (doc.exists && doc.data().list) {
+                        const cloudList = doc.data().list;
+                        cloudList.forEach(item => {
+                            let existing = masterSiswa.find(s => String(s.nisn).trim() === String(item.nisn).trim());
+                            if (existing) {
+                                existing.nama = item.nama;
+                                existing.kelas = item.kelas;
+                            } else {
+                                masterSiswa.push({ nisn: String(item.nisn).trim(), nama: item.nama, kelas: item.kelas, nilai: null });
+                            }
+                        });
+                        updateKelasDropdownOptions();
+                        renderTabelOperatorStats();
+                        renderTabelRekapOperator();
+                    }
+                }, err => {
+                    setOfflineState();
+                });
+
+                // Realtime Listener Nilai Siswa
+                db.collection("nilai_raport_siswa").onSnapshot((snapshot) => {
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        const idx = masterSiswa.findIndex(s => String(s.nisn).trim() === String(data.nisn).trim());
+                        if (idx !== -1) masterSiswa[idx].nilai = data.nilai;
+                    });
+                    isFirebaseActive = true;
+                    document.getElementById("firebaseStatusText").innerText = "Sistem terhubung ke Firebase Firestore secara Real-Time.";
+                    renderTabelOperatorStats();
+                    renderTabelRekapOperator();
+                }, (err) => {
+                    setOfflineState();
+                });
+
+            } catch(e) {
+                setOfflineState();
+            }
+        }
+
+        function setOfflineState() {
+            isFirebaseActive = false;
+            const statusEl = document.getElementById("firebaseStatusText");
+            if (statusEl) {
+                statusEl.innerText = "Mode Offline aktif (Data tersimpan sementara di browser).";
+            }
+            loadLocalBackupData();
+        }
+
+        function loadLocalBackupData() {
+            const localMaster = localStorage.getItem("LOCAL_MASTER_SISWA");
+            if (localMaster) {
+                try {
+                    const parsedMaster = JSON.parse(localMaster);
+                    if (Array.isArray(parsedMaster) && parsedMaster.length > 0) {
+                        masterSiswa = parsedMaster;
+                    }
+                } catch(e){}
+            }
+            const localNilai = localStorage.getItem("LOCAL_NILAI_RAPOR");
+            if (localNilai) {
+                try {
+                    const parsedNilai = JSON.parse(localNilai);
+                    parsedNilai.forEach(item => {
+                        const idx = masterSiswa.findIndex(s => String(s.nisn).trim() === String(item.nisn).trim());
+                        if (idx !== -1) masterSiswa[idx].nilai = item.nilai;
+                    });
+                } catch(e){}
+            }
+            updateKelasDropdownOptions();
+            renderTabelOperatorStats();
+            renderTabelRekapOperator();
+        }
+
+        function saveLocalBackupData() {
+            localStorage.setItem("LOCAL_MASTER_SISWA", JSON.stringify(masterSiswa.map(s => ({ nisn: s.nisn, nama: s.nama, kelas: s.kelas }))));
+            const dataNilai = masterSiswa.filter(s => s.nilai !== null).map(s => ({ nisn: s.nisn, nilai: s.nilai }));
+            localStorage.setItem("LOCAL_NILAI_RAPOR", JSON.stringify(dataNilai));
+        }
+
+        function updateKelasDropdownOptions() {
+            const select = document.getElementById("filterKelas");
+            if (!select) return;
+            const currentVal = select.value;
+            const uniqueClasses = [...new Set(masterSiswa.map(s => s.kelas))].sort();
+
+            select.innerHTML = `<option value="ALL">Semua Kelas</option>`;
+            uniqueClasses.forEach(cls => {
+                const opt = document.createElement("option");
+                opt.value = cls;
+                opt.innerText = `Kelas ${cls}`;
+                select.appendChild(opt);
+            });
+            select.value = currentVal;
+        }
+
+        // =========================================================================
+        // 3. LOGIKA MODE SISWA (CARI NISN, PERBAIKAN NILAI, SIMPAN & CLOSE)
+        // =========================================================================
+        function handleCariNISN(e) {
+            if (e) e.preventDefault();
+            const query = document.getElementById("inputNISN").value.trim();
+            const found = masterSiswa.find(s => 
+                String(s.nisn).trim() === query || 
+                String(s.nisn).trim() === query.padStart(4, '0')
+            );
+
+            if (!found) {
+                showToast(`NISN "${query}" tidak ditemukan! Pastikan NISN didaftarkan oleh Operator.`, "error");
+                return;
+            }
+
+            // Pop-up Warning Peringatan Penting
+            Swal.fire({
+                title: 'PERINGATAN PENTING!',
+                html: `
+                    <div style="text-align: left; font-size: 14px; line-height: 1.6; color: #374151;">
+                        <p style="margin-bottom: 12px;">Mohon pastikan nilai yang Anda masukkan <b>sesuai dengan dokumen Raport asli</b>.</p>
+                        <p style="color: #dc2626; font-weight: 600; background-color: #fef2f2; padding: 10px; border-radius: 6px; border-left: 4px solid #ef4444; margin: 0;">
+                            Pengisian nilai yang tidak akurat atau sengaja dipalsukan dapat mengakibatkan ketidaksesuaian/kerusakan data online siswa pada sistem resmi, seperti TKA, SNBP, Ijazah, dan Transkrip Nilai.
+                        </p>
+                    </div>
+                `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#4f46e5',
+                cancelButtonColor: '#9ca3af',
+                confirmButtonText: 'Saya Paham & Lanjutkan',
+                cancelButtonText: 'Batal',
+                allowOutsideClick: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    activeSiswa = found;
+                    document.getElementById("lblNamaSiswa").innerText = found.nama;
+                    document.getElementById("lblNISNSiswa").innerText = found.nisn;
+                    document.getElementById("lblKelasSiswa").innerText = found.kelas;
+                    document.getElementById("lblClassBadge").innerText = found.kelas;
+
+                    renderFormInputNilaiSiswa(found);
+
+                    document.getElementById("formNilaiSiswa").classList.remove("hidden");
+                    document.getElementById("cardCariNISN").classList.add("hidden");
+
+                    if (found.nilai) {
+                        showToast(`Data nilai lama ditemukan untuk ${found.nama}. Mode Perbaikan Aktif.`, "info");
+                    } else {
+                        showToast(`Data siswa ${found.nama} ditemukan. Silakan isi nilai.`, "success");
+                    }
+                }
+            });
+        }
+
+        function renderFormInputNilaiSiswa(siswa) {
+            const tbody = document.getElementById("tbodySubjectInputs");
+            tbody.innerHTML = "";
+
+            const nilaiData = siswa.nilai || { sem1: {}, sem2: {} };
+            const statusBadge = document.getElementById("lblStatusSimpan");
+            const alertPerbaikan = document.getElementById("alertPerbaikanNilai");
+            const btnSelesaiClose = document.getElementById("btnSelesaiClose");
+
+            if (siswa.nilai) {
+                statusBadge.className = "inline-block px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800";
+                statusBadge.innerHTML = `<i class="fa-solid fa-check-double mr-1"></i> Pernah Disimpan (Siap Diperbaiki)`;
+                alertPerbaikan.classList.remove("hidden");
+                btnSelesaiClose.classList.remove("hidden");
+            } else {
+                statusBadge.className = "inline-block px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800";
+                statusBadge.innerHTML = `<i class="fa-solid fa-clock mr-1"></i> Belum Disimpan`;
+                alertPerbaikan.classList.add("hidden");
+                btnSelesaiClose.classList.add("hidden");
+            }
+
+            MAPEL_LIST.forEach((mapel, idx) => {
+                const valSem1 = (nilaiData.sem1 && nilaiData.sem1[mapel.id] !== undefined) ? nilaiData.sem1[mapel.id] : "";
+                const valSem2 = (nilaiData.sem2 && nilaiData.sem2[mapel.id] !== undefined) ? nilaiData.sem2[mapel.id] : "";
+
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-50 transition";
+                tr.innerHTML = `
+                    <td class="p-3 text-center text-slate-400 font-mono text-xs">${idx + 1}</td>
+                    <td class="p-3 font-semibold text-slate-700">${mapel.label}</td>
+                    <td class="p-3 text-center">
+                        <input type="number" min="0" max="99" required data-mapel="${mapel.id}" data-sem="1" value="${valSem1}" 
+                            oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2); calculateAverages();"
+                            class="w-24 text-center px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono font-bold text-slate-800">
+                    </td>
+                    <td class="p-3 text-center">
+                        <input type="number" min="0" max="99" required data-mapel="${mapel.id}" data-sem="2" value="${valSem2}" 
+                            oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2); calculateAverages();"
+                            class="w-24 text-center px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono font-bold text-slate-800">
+                    </td>
+                    <td class="p-3 text-center font-bold text-slate-700 font-mono row-avg">0.0</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            calculateAverages();
+        }
+
+        function calculateAverages() {
+            const rows = document.querySelectorAll("#tbodySubjectInputs tr");
+            let sumSem1 = 0, countSem1 = 0;
+            let sumSem2 = 0, countSem2 = 0;
+
+            rows.forEach(row => {
+                const inp1 = row.querySelector('input[data-sem="1"]');
+                const inp2 = row.querySelector('input[data-sem="2"]');
+                const cellAvg = row.querySelector('.row-avg');
+
+                const v1 = inp1 && inp1.value !== "" ? parseFloat(inp1.value) : NaN;
+                const v2 = inp2 && inp2.value !== "" ? parseFloat(inp2.value) : NaN;
+
+                let rSum = 0, rCnt = 0;
+                if (!isNaN(v1)) { sumSem1 += v1; countSem1++; rSum += v1; rCnt++; }
+                if (!isNaN(v2)) { sumSem2 += v2; countSem2++; rSum += v2; rCnt++; }
+
+                cellAvg.innerText = rCnt > 0 ? (rSum / rCnt).toFixed(1) : "0.0";
+            });
+
+            const avgS1 = countSem1 > 0 ? (sumSem1 / countSem1).toFixed(1) : "0.0";
+            const avgS2 = countSem2 > 0 ? (sumSem2 / countSem2).toFixed(1) : "0.0";
+            const grandAvg = (countSem1 + countSem2) > 0 ? ((sumSem1 + sumSem2) / (countSem1 + countSem2)).toFixed(1) : "0.0";
+
+            document.getElementById("avgSem1Total").innerText = avgS1;
+            document.getElementById("avgSem2Total").innerText = avgS2;
+            document.getElementById("avgGrandTotal").innerText = grandAvg;
+        }
+
+        function handleSimpanNilai(e) {
+            e.preventDefault();
+            if (!activeSiswa) return;
+
+            const sem1Obj = {};
+            const sem2Obj = {};
+
+            document.querySelectorAll("#tbodySubjectInputs tr").forEach(row => {
+                const inp1 = row.querySelector('input[data-sem="1"]');
+                const inp2 = row.querySelector('input[data-sem="2"]');
+                const mapelId = inp1.dataset.mapel;
+
+                const val1 = inp1.value !== "" ? parseFloat(inp1.value) : 0;
+                const val2 = inp2.value !== "" ? parseFloat(inp2.value) : 0;
+
+                sem1Obj[mapelId] = isNaN(val1) ? 0 : val1;
+                sem2Obj[mapelId] = isNaN(val2) ? 0 : val2;
+            });
+
+            const nilaiPayload = {
+                sem1: sem1Obj,
+                sem2: sem2Obj,
+                updatedAt: new Date().toISOString()
+            };
+
+            activeSiswa.nilai = nilaiPayload;
+            saveLocalBackupData();
+
+            const btn = document.getElementById("btnSimpanNilai");
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> Menyimpan...`;
+
+            if (isFirebaseActive && db) {
+                db.collection("nilai_raport_siswa").doc(String(activeSiswa.nisn)).set({
+                    nisn: activeSiswa.nisn,
+                    nama: activeSiswa.nama,
+                    kelas: activeSiswa.kelas,
+                    nilai: nilaiPayload
+                }).then(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Simpan Nilai Ke Firebase`;
+                    showToast("Nilai berhasil tersimpan ke Firebase!", "success");
+                    postSaveUpdateUI();
+                }).catch(err => {
+                    btn.disabled = false;
+                    btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Simpan Nilai Ke Firebase`;
+                    showToast("Tersimpan secara lokal (Firestore Offline)", "info");
+                    postSaveUpdateUI();
+                });
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Simpan Nilai Ke Firebase`;
+                showToast("Nilai tersimpan di memori lokal!", "success");
+                postSaveUpdateUI();
+            }
+        }
+
+        function postSaveUpdateUI() {
+            renderFormInputNilaiSiswa(activeSiswa);
+            document.getElementById("btnSelesaiClose").classList.remove("hidden");
+            renderTabelOperatorStats();
+        }
+
+        function selesaiInputSiswa() {
+            document.getElementById("formNilaiSiswa").classList.add("hidden");
+            document.getElementById("cardCariNISN").classList.remove("hidden");
+            document.getElementById("inputNISN").value = "";
+            activeSiswa = null;
+            showToast("Selesai. Silakan masukkan NISN untuk siswa berikutnya.", "info");
+        }
+
+        // =========================================================================
+        // 4. MODE OPERATOR (EXCEL IMPORT & EXPORT)
+        // =========================================================================
+        function handleImportMasterExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showToast("Membaca file Excel Master Data...", "info");
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                    let colNamaIdx = -1, colKelasIdx = -1, colNisnIdx = -1;
+                    let startRowIdx = -1;
+
+                    for (let r = 0; r < jsonRows.length; r++) {
+                        const row = jsonRows[r];
+                        if (!row) continue;
+                        for (let c = 0; c < row.length; c++) {
+                            const val = String(row[c] || "").toUpperCase().trim();
+                            if (val.includes("NAMA")) colNamaIdx = c;
+                            if (val.includes("KELAS")) colKelasIdx = c;
+                            if (val.includes("NISN")) colNisnIdx = c;
+                        }
+                        if (colNamaIdx !== -1 && colNisnIdx !== -1) {
+                            startRowIdx = r + 1;
+                            break;
+                        }
+                    }
+
+                    if (colNamaIdx === -1 || colNisnIdx === -1) {
+                        showToast("Format Excel tidak valid. Pastikan ada kolom NAMA SISWA & NISN!", "error");
+                        return;
+                    }
+
+                    let importedCount = 0;
+                    const newMaster = [];
+
+                    for (let r = startRowIdx; r < jsonRows.length; r++) {
+                        const row = jsonRows[r];
+                        if (!row || row.length === 0) continue;
+
+                        const nama = row[colNamaIdx] ? String(row[colNamaIdx]).trim() : "";
+                        const nisn = row[colNisnIdx] ? String(row[colNisnIdx]).trim() : "";
+                        const kelas = (colKelasIdx !== -1 && row[colKelasIdx]) ? String(row[colKelasIdx]).trim() : "X-1";
+
+                        if (nama && nisn && nisn.toUpperCase() !== "NISN") {
+                            const existing = masterSiswa.find(s => String(s.nisn).trim() === nisn);
+                            newMaster.push({
+                                nisn: nisn,
+                                nama: nama,
+                                kelas: kelas,
+                                nilai: existing ? existing.nilai : null
+                            });
+                            importedCount++;
+                        }
+                    }
+
+                    if (importedCount > 0) {
+                        masterSiswa = newMaster;
+                        saveLocalBackupData();
+
+                        if (isFirebaseActive && db) {
+                            const listToSave = masterSiswa.map(s => ({ nisn: s.nisn, nama: s.nama, kelas: s.kelas }));
+                            db.collection("master_siswa_list").doc("active").set({
+                                list: listToSave,
+                                updatedAt: new Date().toISOString()
+                            });
+                        }
+
+                        updateKelasDropdownOptions();
+                        renderTabelOperatorStats();
+                        renderTabelRekapOperator();
+                        showToast(`Berhasil mengimpor ${importedCount} data master siswa!`, "success");
+                    } else {
+                        showToast("Tidak ada data siswa yang valid di file Excel.", "error");
+                    }
+                } catch(err) {
+                    showToast("Gagal membaca file Excel.", "error");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = "";
+        }
+
+        function renderTabelOperatorStats() {
+            const totalSiswa = masterSiswa.length;
+            const sudah = masterSiswa.filter(s => s.nilai !== null);
+            const countSudah = sudah.length;
+            const countBelum = totalSiswa - countSudah;
+
+            const pctSudah = totalSiswa > 0 ? Math.round((countSudah / totalSiswa) * 100) : 0;
+            const pctBelum = totalSiswa > 0 ? Math.round((countBelum / totalSiswa) * 100) : 0;
+
+            let totalNilaiSum = 0, totalMapelCount = 0;
+
+            sudah.forEach(s => {
+                if (s.nilai && s.nilai.sem1) {
+                    Object.values(s.nilai.sem1).forEach(v => {
+                        if (typeof v === 'number' && !isNaN(v)) { totalNilaiSum += v; totalMapelCount++; }
+                    });
+                }
+                if (s.nilai && s.nilai.sem2) {
+                    Object.values(s.nilai.sem2).forEach(v => {
+                        if (typeof v === 'number' && !isNaN(v)) { totalNilaiSum += v; totalMapelCount++; }
+                    });
+                }
+            });
+
+            const overallAvg = totalMapelCount > 0 ? (totalNilaiSum / totalMapelCount).toFixed(1) : "0.0";
+
+            document.getElementById("statTotalSiswa").innerText = totalSiswa;
+            document.getElementById("statSudahIsi").innerText = countSudah;
+            document.getElementById("statSudahIsiPct").innerText = `${pctSudah}% dari total ${totalSiswa}`;
+            document.getElementById("statBelumIsi").innerText = countBelum;
+            document.getElementById("statBelumIsiPct").innerText = `${pctBelum}% dari total ${totalSiswa}`;
+            document.getElementById("statRataAngkatan").innerText = overallAvg;
+        }
+
+        function renderTabelRekapOperator() {
+            const filterKelas = document.getElementById("filterKelas").value;
+            const filterStatus = document.getElementById("filterStatus").value;
+            const search = document.getElementById("searchOperator").value.toLowerCase();
+
+            const tbody = document.getElementById("tbodyOperatorRekap");
+            if (!tbody) return;
+            tbody.innerHTML = "";
+
+            const filtered = masterSiswa.filter(s => {
+                const matchKelas = filterKelas === "ALL" || s.kelas === filterKelas;
+                const matchStatus = filterStatus === "ALL" || (filterStatus === "SUDAH" ? s.nilai !== null : s.nilai === null);
+                const matchSearch = String(s.nama || "").toLowerCase().includes(search) || String(s.nisn || "").includes(search);
+                return matchKelas && matchStatus && matchSearch;
+            });
+
+            filtered.forEach((siswa, index) => {
+                let r1 = "-", r2 = "-", rGab = "-";
+                if (siswa.nilai) {
+                    let s1Sum = 0, c1 = 0;
+                    if (siswa.nilai.sem1) {
+                        Object.values(siswa.nilai.sem1).forEach(v => {
+                            if (typeof v === 'number' && !isNaN(v)) { s1Sum += v; c1++; }
+                        });
+                    }
+                    r1 = c1 > 0 ? (s1Sum / c1).toFixed(1) : "-";
+
+                    let s2Sum = 0, c2 = 0;
+                    if (siswa.nilai.sem2) {
+                        Object.values(siswa.nilai.sem2).forEach(v => {
+                            if (typeof v === 'number' && !isNaN(v)) { s2Sum += v; c2++; }
+                        });
+                    }
+                    r2 = c2 > 0 ? (s2Sum / c2).toFixed(1) : "-";
+
+                    if (c1 + c2 > 0) rGab = ((s1Sum + s2Sum) / (c1 + c2)).toFixed(1);
+                }
+
+                const statusBadge = siswa.nilai ? 
+                    `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-check mr-1"></i>Sudah</span>` :
+                    `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800"><i class="fa-solid fa-xmark mr-1"></i>Belum</span>`;
+
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-slate-50 transition";
+                tr.innerHTML = `
+                    <td class="p-3 text-center text-slate-400 font-mono text-xs">${index + 1}</td>
+                    <td class="p-3 font-mono text-slate-700 font-semibold">${siswa.nisn}</td>
+                    <td class="p-3 font-semibold text-slate-800">${siswa.nama}</td>
+                    <td class="p-3 text-center font-bold text-indigo-600">${siswa.kelas}</td>
+                    <td class="p-3 text-center">${statusBadge}</td>
+                    <td class="p-3 text-center font-mono">${r1}</td>
+                    <td class="p-3 text-center font-mono">${r2}</td>
+                    <td class="p-3 text-center font-mono font-bold text-emerald-700">${rGab}</td>
+                    <td class="p-3 text-center">
+                        <div class="flex flex-col sm:flex-row items-center justify-center gap-1">
+                            <button onclick="editSiswaOperator('${siswa.nisn}')" class="text-indigo-600 hover:text-indigo-900 font-semibold text-xs px-2 py-1 rounded hover:bg-indigo-50">
+                                <i class="fa-solid fa-pen-to-square"></i> Input/Edit
+                            </button>
+                            ${siswa.nilai ? `
+                            <button onclick="hapusNilaiSiswaOperator('${siswa.nisn}')" class="text-rose-600 hover:text-rose-900 font-semibold text-xs px-2 py-1 rounded hover:bg-rose-50">
+                                <i class="fa-solid fa-trash-can"></i> Hapus Nilai
+                            </button>` : ''}
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function editSiswaOperator(nisn) {
+            document.getElementById("inputNISN").value = nisn;
+            switchTab('siswa');
+            handleCariNISN(null);
+        }
+
+        async function hapusNilaiSiswaOperator(nisn) {
+            if (!isOperatorLoggedIn) {
+                showToast("Akses hanya untuk Operator.", "error");
+                return;
+            }
+
+            const siswa = masterSiswa.find(s => String(s.nisn).trim() === String(nisn).trim());
+            if (!siswa) {
+                showToast("Data siswa tidak ditemukan.", "error");
+                return;
+            }
+            if (!siswa.nilai) {
+                showToast("Siswa ini belum memiliki nilai.", "info");
+                return;
+            }
+
+            const yakin = confirm(`Hapus SEMUA nilai ${siswa.nama} (NISN ${siswa.nisn})?\n\nData siswa/master tetap ada, yang dihapus hanya nilai Semester 1 dan 2.`);
+            if (!yakin) return;
+
+            try {
+                if (isFirebaseActive && db) {
+                    await db.collection("nilai_raport_siswa").doc(String(siswa.nisn)).delete();
+                }
+
+                siswa.nilai = null;
+                const localNilai = JSON.parse(localStorage.getItem("LOCAL_NILAI_RAPOR") || "[]");
+                const filteredLocal = localNilai.filter(item => String(item.nisn).trim() !== String(siswa.nisn).trim());
+                localStorage.setItem("LOCAL_NILAI_RAPOR", JSON.stringify(filteredLocal));
+
+                renderTabelOperatorStats();
+                renderTabelRekapOperator();
+                showToast(`Nilai ${siswa.nama} berhasil dihapus.`, "success");
+            } catch (err) {
+                console.error(err);
+                showToast("Gagal menghapus nilai dari Firebase.", "error");
+            }
+        }
+
+        async function hapusSemuaNilaiOperator() {
+            if (!isOperatorLoggedIn) {
+                showToast("Akses hanya untuk Operator.", "error");
+                return;
+            }
+
+            const siswaDenganNilai = masterSiswa.filter(s => s.nilai);
+            if (siswaDenganNilai.length === 0) {
+                showToast("Belum ada nilai siswa yang tersimpan.", "info");
+                return;
+            }
+
+            const yakin = confirm(`PERINGATAN!\n\nAnda akan menghapus nilai SEMUA SISWA (${siswaDenganNilai.length} siswa).\n\nData master siswa, nama, NISN, dan kelas TIDAK akan dihapus. Hanya data nilai yang dihapus.\n\nLanjutkan?`);
+            if (!yakin) return;
+
+            try {
+                if (isFirebaseActive && db) {
+                    for (let i = 0; i < siswaDenganNilai.length; i += 500) {
+                        const batch = db.batch();
+                        siswaDenganNilai.slice(i, i + 500).forEach(siswa => {
+                            const ref = db.collection("nilai_raport_siswa").doc(String(siswa.nisn));
+                            batch.delete(ref);
+                        });
+                        await batch.commit();
+                    }
+                }
+
+                masterSiswa.forEach(siswa => { siswa.nilai = null; });
+                localStorage.removeItem("LOCAL_NILAI_RAPOR");
+
+                renderTabelOperatorStats();
+                renderTabelRekapOperator();
+                showToast(`Berhasil menghapus nilai ${siswaDenganNilai.length} siswa.`, "success");
+            } catch (err) {
+                console.error(err);
+                showToast("Gagal menghapus seluruh nilai dari Firebase.", "error");
+            }
+        }
+
+        function buildLegerSheetData(semesterKey) {
+            const sheetData = [
+                ["SISTEM INFORMASI PENGELOLAAN NILAI RAPOR - SMAN 1 SIMPANG OKU SELATAN"], 
+                ["PENGUMPULAN NILAI SEMESTER 1 & 2 - KELAS XII TA 2025/2026"],
+                ["NO", "NAMA SISWA", "KELAS", "NISN", "MATA PELAJARAN", "", "", "", "", "", "", "", "", "", ""], 
+                ["", "", "", "", "PAI", "PENDIDIKAN PANCASILA", "B.INDONESIA", "MTK UMUM", "IPA", "IPS", "B.INGGRIS", "PENJAS", "INFORMATIKA", "SENI BUDAYA", "KDKA"] 
+            ];
+
+            const mapelKeys = ["PAI", "PANCASILA", "BIND", "MTK", "IPA", "IPS", "BING", "PENJAS", "INFORMATIKA", "SENI", "KDKA"];
+
+            masterSiswa.forEach((siswa, index) => {
+                const row = [ index + 1, siswa.nama, siswa.kelas, siswa.nisn ];
+
+                mapelKeys.forEach(mKey => {
+                    let val = "";
+                    if (siswa.nilai) {
+                        if (semesterKey === 'sem1' && siswa.nilai.sem1 && siswa.nilai.sem1[mKey] !== undefined) {
+                            val = siswa.nilai.sem1[mKey];
+                        } else if (semesterKey === 'sem2' && siswa.nilai.sem2 && siswa.nilai.sem2[mKey] !== undefined) {
+                            val = siswa.nilai.sem2[mKey];
+                        } else if (semesterKey === 'rata') {
+                            const v1 = (siswa.nilai.sem1 && siswa.nilai.sem1[mKey] !== undefined && siswa.nilai.sem1[mKey] !== "") ? Number(siswa.nilai.sem1[mKey]) : null;
+                            const v2 = (siswa.nilai.sem2 && siswa.nilai.sem2[mKey] !== undefined && siswa.nilai.sem2[mKey] !== "") ? Number(siswa.nilai.sem2[mKey]) : null;
+                            if (v1 !== null && v2 !== null) val = ((v1 + v2) / 2).toFixed(1);
+                            else if (v1 !== null) val = v1;
+                            else if (v2 !== null) val = v2;
+                        }
+                    }
+                    row.push(val !== "" ? Number(val) : "");
+                });
+
+                sheetData.push(row);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 14 } }, 
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 14 } }, 
+                { s: { r: 2, c: 0 }, e: { r: 3, c: 0 } },  
+                { s: { r: 2, c: 1 }, e: { r: 3, c: 1 } },  
+                { s: { r: 2, c: 2 }, e: { r: 3, c: 2 } },  
+                { s: { r: 2, c: 3 }, e: { r: 3, c: 3 } },  
+                { s: { r: 2, c: 4 }, e: { r: 2, c: 14 } }  
+            ];
+
+            ws['!cols'] = [
+                { wch: 5 }, { wch: 32 }, { wch: 10 }, { wch: 14 }, 
+                { wch: 8 }, { wch: 22 }, { wch: 15 }, { wch: 12 }, 
+                { wch: 8 }, { wch: 8 }, { wch: 12 }, { wch: 10 }, 
+                { wch: 14 }, { wch: 14 }, { wch: 10 }  
+            ];
+
+            return ws;
+        }
+
+        function downloadFormatLagerExcel() {
+            showToast("Menyiapkan file Format Lager Excel...", "info");
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, buildLegerSheetData('sem1'), "Semester 1");
+            XLSX.utils.book_append_sheet(wb, buildLegerSheetData('sem2'), "Semester 2");
+            XLSX.utils.book_append_sheet(wb, buildLegerSheetData('rata'), "Rata-Rata");
+
+            XLSX.writeFile(wb, "REKAP_NILAI_RAPOR_SMAN1_SIMPANG.xlsx");
+            showToast("File Excel berhasil diunduh!", "success");
+        }
+
+        // =========================================================================
+        // 5. NAVIGASI & UTILS
+        // =========================================================================
+        function switchTab(tab) {
+            if (tab === 'siswa') {
+                document.getElementById("viewSiswa").classList.remove("hidden");
+                document.getElementById("viewOperator").classList.add("hidden");
+                document.getElementById("btnNavSiswa").className = "px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-white text-indigo-700 shadow hover:bg-indigo-50 transition";
+                document.getElementById("btnNavOperator").className = "px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-indigo-800 text-indigo-100 hover:bg-indigo-900 transition";
+            } else if (tab === 'operator') {
+                if (!isOperatorLoggedIn) {
+                    openOperatorModal();
+                    return;
+                }
+                document.getElementById("viewSiswa").classList.add("hidden");
+                document.getElementById("viewOperator").classList.remove("hidden");
+                document.getElementById("btnNavOperator").className = "px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-white text-indigo-700 shadow hover:bg-indigo-50 transition";
+                document.getElementById("btnNavSiswa").className = "px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-indigo-800 text-indigo-100 hover:bg-indigo-900 transition";
+                renderTabelOperatorStats();
+                renderTabelRekapOperator();
+            }
+        }
+
+        function openOperatorModal() {
+            document.getElementById("modalPinOperator").classList.remove("hidden");
+            document.getElementById("inputPinOperator").value = "";
+            document.getElementById("inputPinOperator").focus();
+        }
+
+        function closeOperatorModal() {
+            document.getElementById("modalPinOperator").classList.add("hidden");
+        }
+
+        function submitPinOperator() {
+            const pin = document.getElementById("inputPinOperator").value;
+            if (pin === "32164") {
+                isOperatorLoggedIn = true;
+                closeOperatorModal();
+                switchTab('operator');
+                showToast("Selamat datang di Mode Operator", "success");
+            } else {
+                showToast("Password salah!", "error");
+            }
+        }
+
+        function logoutOperator() {
+            isOperatorLoggedIn = false;
+            document.getElementById("modalConfig").classList.add("hidden");
+            switchTab('siswa');
+            showToast("Anda telah keluar dari Mode Operator.", "info");
+        }
+
+        function toggleConfigModal() {
+            if (!isOperatorLoggedIn) {
+                showToast("Konfigurasi Firebase hanya tersedia di Mode Operator.", "error");
+                return;
+            }
+
+            const modal = document.getElementById("modalConfig");
+            modal.classList.toggle("hidden");
+            if (!modal.classList.contains("hidden")) {
+                const currentConfig = localStorage.getItem("FIREBASE_CONFIG_RAPOR");
+                if (currentConfig) document.getElementById("txtFirebaseConfig").value = currentConfig;
+            }
+        }
+
+        function saveFirebaseConfig() {
+            const txt = document.getElementById("txtFirebaseConfig").value.trim();
+            if (txt) {
+                try {
+                    JSON.parse(txt);
+                    localStorage.setItem("FIREBASE_CONFIG_RAPOR", txt);
+                    showToast("Konfigurasi disimpan. Memuat ulang...", "success");
+                    setTimeout(() => location.reload(), 1200);
+                } catch(e) {
+                    showToast("Format JSON Config tidak valid!", "error");
+                }
+            } else {
+                showToast("Masukkan konfig JSON Firebase terlebih dahulu.", "error");
+            }
+        }
+
+        function resetDefaultFirebase() {
+            localStorage.removeItem("FIREBASE_CONFIG_RAPOR");
+            showToast("Kembali ke mode default.", "info");
+            setTimeout(() => location.reload(), 1000);
+        }
+
+        function showToast(message, type = "info") {
+            const toast = document.getElementById("toast");
+            const toastMsg = document.getElementById("toastMsg");
+            const toastIcon = document.getElementById("toastIcon");
+
+            if (!toast || !toastMsg || !toastIcon) return;
+
+            toastMsg.innerText = message;
+            if (type === "success") {
+                toastIcon.className = "fa-solid fa-circle-check text-emerald-400";
+            } else if (type === "error") {
+                toastIcon.className = "fa-solid fa-circle-exclamation text-rose-400";
+            } else {
+                toastIcon.className = "fa-solid fa-circle-info text-indigo-400";
+            }
+
+            toast.classList.remove("translate-y-20", "opacity-0");
+            setTimeout(() => { toast.classList.add("translate-y-20", "opacity-0"); }, 3000);
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            initFirebase();
+            updateKelasDropdownOptions();
+            renderTabelOperatorStats();
+        });
+    </script>
+</body>
+</html>
