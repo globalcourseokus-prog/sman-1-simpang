@@ -75,7 +75,7 @@
         <div id="firebaseStatus" class="mb-4 p-3 rounded-lg text-xs sm:text-sm flex items-center justify-between bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm">
             <div class="flex items-center space-x-2">
                 <i class="fa-solid fa-circle-check text-emerald-600"></i>
-                <span id="firebaseStatusText">Sistem terhubung ke Firebase Firestore secara Real-Time.</span>
+                <span id="firebaseStatusText">Sistem terhubung ke Firebase Realtime Database.</span>
             </div>
         </div>
 
@@ -323,7 +323,7 @@
             { id: "PENJAS", label: "PENJAS" },
             { id: "INFORMATIKA", label: "INFORMATIKA" },
             { id: "SENI", label: "SENI BUDAYA" },
-            { id: "BK/MULOK", label: "BK/MUATAN LOKAL" }
+            { id: "BKMULOK", label: "BK/MUATAN LOKAL" }
         ];
 
         // Master Data Siswa Default
@@ -725,7 +725,7 @@
                 });
 
                 Promise.race([
-                    set(ref(db, "nilai_raport_siswa/" + String(activeSiswa.nisn)), dataSiswa),
+                    Promise.resolve().then(() => set(ref(db, "nilai_raport_siswa/" + String(activeSiswa.nisn)), dataSiswa)),
                     timeoutPromise
                 ]).then(() => {
                     btn.disabled = false;
@@ -745,6 +745,7 @@
                     }
                     postSaveUpdateUI();
                 }).catch(err => {
+                    console.error("Gagal menyimpan nilai ke Firebase Realtime Database:", err);
                     btn.disabled = false;
                     btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Simpan Nilai Ke Firebase`;
 
@@ -1076,10 +1077,10 @@
                 ["SISTEM INFORMASI PENGELOLAAN NILAI RAPOR - SMAN 1 SIMPANG OKU SELATAN"], 
                 ["PENGUMPULAN NILAI SEMESTER 1 & 2 - KELAS XII TA 2025/2026"],
                 ["NO", "NAMA SISWA", "KELAS", "NISN", "MATA PELAJARAN", "", "", "", "", "", "", "", "", "", ""], 
-                ["", "", "", "", "PAI", "PENDIDIKAN PANCASILA", "B.INDONESIA", "MTK UMUM", "IPA", "IPS", "B.INGGRIS", "PENJAS", "INFORMATIKA", "SENI BUDAYA", "KDKA"] 
+                ["", "", "", "", "PAI", "PENDIDIKAN PANCASILA", "B.INDONESIA", "MTK UMUM", "IPA", "IPS", "B.INGGRIS", "PENJAS", "INFORMATIKA", "SENI BUDAYA", "BK/MUATAN LOKAL"] 
             ];
 
-            const mapelKeys = ["PAI", "PANCASILA", "BIND", "MTK", "IPA", "IPS", "BING", "PENJAS", "INFORMATIKA", "SENI", "KDKA"];
+            const mapelKeys = ["PAI", "PANCASILA", "BIND", "MTK", "IPA", "IPS", "BING", "PENJAS", "INFORMATIKA", "SENI", "BKMULOK"];
 
             masterSiswa.forEach((siswa, index) => {
                 const row = [ index + 1, siswa.nama, siswa.kelas, siswa.nisn ];
