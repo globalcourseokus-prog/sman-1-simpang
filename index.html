@@ -12,9 +12,38 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- SweetAlert2 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- Firebase Compat SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <!-- Firebase Web SDK Modular v12.19.0 - Realtime Database -->
+    <script type="module">
+        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-analytics.js";
+        import {
+            getDatabase,
+            ref,
+            set,
+            remove,
+            update,
+            onValue
+        } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+
+        // Firebase configuration proyek SMAN 1 SIMPANG OKU SELATAN
+        const firebaseConfig = {
+            apiKey: "AIzaSyCz-Fy3sXvPnazdM3wDZo3Ch0PzcjFLcSk",
+            authDomain: "sman-1-simpang-f72ff.firebaseapp.com",
+            databaseURL: "https://sman-1-simpang-f72ff-default-rtdb.firebaseio.com",
+            projectId: "sman-1-simpang-f72ff",
+            storageBucket: "sman-1-simpang-f72ff.firebasestorage.app",
+            messagingSenderId: "209129015266",
+            appId: "1:209129015266:web:e9bb11499c75d475231bbb",
+            measurementId: "G-4ZYHQ38H33"
+        };
+
+        // Expose Firebase modular APIs to the main application script.
+        window.FirebaseModules = {
+            initializeApp, getApps, getApp, getAnalytics,
+            getDatabase, ref, set, remove, update, onValue,
+            firebaseConfig
+        };
+    </script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
 
@@ -181,9 +210,6 @@
                     <button onclick="hapusSemuaNilaiOperator()" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow transition flex items-center gap-2">
                         <i class="fa-solid fa-trash-can"></i> Hapus Semua Nilai
                     </button>
-                    <button onclick="toggleConfigModal()" class="bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold px-4 py-2.5 rounded-xl shadow transition flex items-center gap-2">
-                        <i class="fa-solid fa-gear"></i> Konfigurasi Firebase
-                    </button>
                     <button onclick="logoutOperator()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold px-4 py-2.5 rounded-xl transition">
                         Keluar Mode Operator
                     </button>
@@ -259,37 +285,6 @@
 
     </main>
 
-    <!-- Modal Konfigurasi Firebase -->
-    <div id="modalConfig" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-fire text-orange-500 mr-2"></i> Pengaturan Firebase Firestore</h3>
-                <button onclick="toggleConfigModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
-            </div>
-            <p class="text-xs text-slate-500">
-                Tempelkan objek konfigurasi Firebase proyek Anda di bawah ini agar data dapat tersimpan secara online ke cloud Firebase.
-            </p>
-            <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">Firebase Config (JSON Object):</label>
-                <textarea id="txtFirebaseConfig" rows="7" class="w-full font-mono text-xs p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder='{
-  "apiKey": "AIzaSy...",
-  "authDomain": "proyek-anda.firebaseapp.com",
-  "projectId": "proyek-anda",
-  "storageBucket": "proyek-anda.appspot.com",
-  "messagingSenderId": "123456789",
-  "appId": "1:123456789:web:abcdef"
-}'></textarea>
-            </div>
-            <div class="flex justify-between items-center pt-2">
-                <button onclick="resetDefaultFirebase()" class="text-xs text-rose-600 font-semibold hover:underline">Reset Ke Default</button>
-                <div class="space-x-2">
-                    <button onclick="toggleConfigModal()" class="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-300">Batal</button>
-                    <button onclick="saveFirebaseConfig()" class="px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 shadow">Simpan & Muat Ulang</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Modal PIN Operator -->
     <div id="modalPinOperator" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl max-w-xs w-full p-6 text-center space-y-4">
@@ -313,7 +308,7 @@
     </div>
 
     <!-- SCRIPT LOGIC -->
-    <script>
+    <script type="module">
         // =========================================================================
         // 1. CONSTANTS & INITIAL MASTER DATA
         // =========================================================================
@@ -356,68 +351,126 @@
         // =========================================================================
         // 2. FIREBASE INITIALIZATION & SINKRONISASI
         // =========================================================================
-        function initFirebase() {
+        async function initFirebase() {
             loadLocalBackupData();
 
-            const savedConfigStr = localStorage.getItem("FIREBASE_CONFIG_RAPOR");
-            let firebaseConfig = null;
-
-            if (savedConfigStr) {
-                try { firebaseConfig = JSON.parse(savedConfigStr); } catch(e){}
-            }
-
-            if (!firebaseConfig) {
-                firebaseConfig = {
-                    apiKey: "AIzaSyDemoKeyForClassXGradesCollectionOnly",
-                    authDomain: "demo-raport-x.firebaseapp.com",
-                    projectId: "demo-raport-x",
-                    storageBucket: "demo-raport-x.appspot.com",
-                    messagingSenderId: "1234567890",
-                    appId: "1:1234567890:web:demo123456"
-                };
-            }
-
             try {
-                if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-                db = firebase.firestore();
-                
-                // Realtime Listener Master Data
-                db.collection("master_siswa_list").doc("active").onSnapshot(doc => {
-                    if (doc.exists && doc.data().list) {
-                        const cloudList = doc.data().list;
-                        cloudList.forEach(item => {
-                            let existing = masterSiswa.find(s => String(s.nisn).trim() === String(item.nisn).trim());
-                            if (existing) {
-                                existing.nama = item.nama;
-                                existing.kelas = item.kelas;
-                            } else {
-                                masterSiswa.push({ nisn: String(item.nisn).trim(), nama: item.nama, kelas: item.kelas, nilai: null });
+                const {
+                    initializeApp,
+                    getApps,
+                    getApp,
+                    getAnalytics,
+                    getDatabase,
+                    ref,
+                    onValue,
+                    firebaseConfig
+                } = window.FirebaseModules;
+
+                // Gunakan Realtime Database karena konfigurasi Firebase yang diberikan
+                // memiliki databaseURL aktif.
+                const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+
+                try {
+                    getAnalytics(app);
+                } catch (analyticsError) {
+                    console.warn("Firebase Analytics tidak tersedia:", analyticsError);
+                }
+
+                db = getDatabase(app);
+
+                // Database sudah berhasil diinisialisasi. Set true agar tombol simpan
+                // dapat langsung mencoba menulis dan menampilkan error Rules/Network
+                // yang sebenarnya jika akses ditolak.
+                isFirebaseActive = true;
+                const statusEl = document.getElementById("firebaseStatusText");
+                if (statusEl) {
+                    statusEl.innerText = "Sistem terhubung ke Firebase Realtime Database.";
+                }
+
+                // Realtime listener master siswa.
+                onValue(
+                    ref(db, "master_siswa_list/active"),
+                    (snapshot) => {
+                        const value = snapshot.val();
+                        if (value && Array.isArray(value.list)) {
+                            const nilaiByNisn = new Map(
+                                masterSiswa
+                                    .filter(s => s.nilai !== null)
+                                    .map(s => [String(s.nisn).trim(), s.nilai])
+                            );
+
+                            masterSiswa = value.list.map(item => ({
+                                nisn: String(item.nisn ?? "").trim(),
+                                nama: item.nama || "",
+                                kelas: item.kelas || "X-1",
+                                nilai: nilaiByNisn.get(String(item.nisn ?? "").trim()) ?? null
+                            }));
+
+                            updateKelasDropdownOptions();
+                            renderTabelOperatorStats();
+                            renderTabelRekapOperator();
+                        }
+
+                        isFirebaseActive = true;
+                        if (statusEl) {
+                            statusEl.innerText = "Sistem terhubung ke Firebase Realtime Database.";
+                        }
+                    },
+                    (err) => {
+                        console.error("Gagal membaca master siswa dari Realtime Database:", err);
+                        isFirebaseActive = false;
+                        setOfflineState();
+                    }
+                );
+
+                // Realtime listener nilai siswa.
+                onValue(
+                    ref(db, "nilai_raport_siswa"),
+                    (snapshot) => {
+                        const allValues = snapshot.val() || {};
+                        const nilaiByNisn = new Map();
+
+                        Object.keys(allValues).forEach(key => {
+                            const data = allValues[key];
+                            if (data && data.nisn !== undefined && data.nilai) {
+                                nilaiByNisn.set(String(data.nisn).trim(), data.nilai);
                             }
                         });
-                        updateKelasDropdownOptions();
+
+                        masterSiswa.forEach(siswa => {
+                            const key = String(siswa.nisn).trim();
+                            siswa.nilai = nilaiByNisn.has(key) ? nilaiByNisn.get(key) : null;
+                        });
+
+                        isFirebaseActive = true;
+                        if (statusEl) {
+                            statusEl.innerText = "Sistem terhubung ke Firebase Realtime Database.";
+                        }
+
                         renderTabelOperatorStats();
                         renderTabelRekapOperator();
+
+                        // Jika siswa yang sedang aktif ada di Firebase, tampilkan data terbaru.
+                        if (activeSiswa) {
+                            const updated = masterSiswa.find(
+                                s => String(s.nisn).trim() === String(activeSiswa.nisn).trim()
+                            );
+                            if (updated) {
+                                activeSiswa = updated;
+                                renderFormInputNilaiSiswa(activeSiswa);
+                            }
+                        }
+                    },
+                    (err) => {
+                        console.error("Gagal membaca nilai dari Realtime Database:", err);
+                        isFirebaseActive = false;
+                        setOfflineState();
                     }
-                }, err => {
-                    setOfflineState();
-                });
+                );
 
-                // Realtime Listener Nilai Siswa
-                db.collection("nilai_raport_siswa").onSnapshot((snapshot) => {
-                    snapshot.forEach((doc) => {
-                        const data = doc.data();
-                        const idx = masterSiswa.findIndex(s => String(s.nisn).trim() === String(data.nisn).trim());
-                        if (idx !== -1) masterSiswa[idx].nilai = data.nilai;
-                    });
-                    isFirebaseActive = true;
-                    document.getElementById("firebaseStatusText").innerText = "Sistem terhubung ke Firebase Firestore secara Real-Time.";
-                    renderTabelOperatorStats();
-                    renderTabelRekapOperator();
-                }, (err) => {
-                    setOfflineState();
-                });
-
-            } catch(e) {
+            } catch (e) {
+                console.error("Firebase Realtime Database gagal diinisialisasi:", e);
+                isFirebaseActive = false;
                 setOfflineState();
             }
         }
@@ -644,26 +697,83 @@
             btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> Menyimpan...`;
 
             if (isFirebaseActive && db) {
-                db.collection("nilai_raport_siswa").doc(String(activeSiswa.nisn)).set({
-                    nisn: activeSiswa.nisn,
+                const { ref, set } = window.FirebaseModules;
+                const dataSiswa = {
+                    nisn: String(activeSiswa.nisn),
                     nama: activeSiswa.nama,
                     kelas: activeSiswa.kelas,
                     nilai: nilaiPayload
-                }).then(() => {
+                };
+
+                // Popup proses agar pengguna tahu data sedang dikirim.
+                if (typeof Swal !== "undefined") {
+                    Swal.fire({
+                        title: "Mengirim nilai...",
+                        text: "Mohon tunggu, data sedang disimpan ke Firebase.",
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+                }
+
+                // Batasi waktu agar tombol tidak berputar tanpa batas.
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error(
+                        "Waktu koneksi ke Firebase habis. Periksa internet dan Realtime Database Rules."
+                    )), 15000);
+                });
+
+                Promise.race([
+                    set(ref(db, "nilai_raport_siswa/" + String(activeSiswa.nisn)), dataSiswa),
+                    timeoutPromise
+                ]).then(() => {
                     btn.disabled = false;
                     btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Simpan Nilai Ke Firebase`;
-                    showToast("Nilai berhasil tersimpan ke Firebase!", "success");
+
+                    // Popup sukses hanya muncul setelah Firebase mengonfirmasi setDoc selesai.
+                    if (typeof Swal !== "undefined") {
+                        Swal.fire({
+                            icon: "success",
+                            title: "Nilai Berhasil Terkirim!",
+                            text: `Nilai siswa ${activeSiswa.nama} (NISN ${activeSiswa.nisn}) berhasil disimpan ke Firebase.`,
+                            confirmButtonText: "OK",
+                            confirmButtonColor: "#4f46e5"
+                        });
+                    } else {
+                        showToast("Nilai berhasil tersimpan ke Firebase!", "success");
+                    }
                     postSaveUpdateUI();
                 }).catch(err => {
                     btn.disabled = false;
                     btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Simpan Nilai Ke Firebase`;
-                    showToast("Tersimpan secara lokal (Firestore Offline)", "info");
-                    postSaveUpdateUI();
+
+                    if (typeof Swal !== "undefined") {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Nilai Belum Terkirim",
+                            text: err && err.message ? err.message : "Gagal menyimpan nilai ke Firebase.",
+                            confirmButtonText: "Coba Lagi",
+                            confirmButtonColor: "#4f46e5"
+                        });
+                    } else {
+                        showToast("Gagal mengirim nilai ke Firebase.", "error");
+                    }
                 });
             } else {
                 btn.disabled = false;
                 btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Simpan Nilai Ke Firebase`;
-                showToast("Nilai tersimpan di memori lokal!", "success");
+                if (typeof Swal !== "undefined") {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Firebase Belum Terhubung",
+                        text: "Nilai belum dapat dikirim ke Firebase. Data sementara tetap tersimpan di browser.",
+                        confirmButtonText: "OK",
+                        confirmButtonColor: "#4f46e5"
+                    });
+                } else {
+                    showToast("Firebase belum terhubung.", "error");
+                }
                 postSaveUpdateUI();
             }
         }
@@ -751,9 +861,13 @@
 
                         if (isFirebaseActive && db) {
                             const listToSave = masterSiswa.map(s => ({ nisn: s.nisn, nama: s.nama, kelas: s.kelas }));
-                            db.collection("master_siswa_list").doc("active").set({
+                            const { ref, set } = window.FirebaseModules;
+                            set(ref(db, "master_siswa_list/active"), {
                                 list: listToSave,
                                 updatedAt: new Date().toISOString()
+                            }).catch(err => {
+                                console.error("Gagal menyimpan master siswa ke Realtime Database:", err);
+                                showToast("Master tersimpan lokal, tetapi gagal dikirim ke Firebase.", "error");
                             });
                         }
 
@@ -902,7 +1016,8 @@
 
             try {
                 if (isFirebaseActive && db) {
-                    await db.collection("nilai_raport_siswa").doc(String(siswa.nisn)).delete();
+                    const { ref, remove } = window.FirebaseModules;
+                    await remove(ref(db, "nilai_raport_siswa/" + String(siswa.nisn)));
                 }
 
                 siswa.nilai = null;
@@ -936,14 +1051,12 @@
 
             try {
                 if (isFirebaseActive && db) {
-                    for (let i = 0; i < siswaDenganNilai.length; i += 500) {
-                        const batch = db.batch();
-                        siswaDenganNilai.slice(i, i + 500).forEach(siswa => {
-                            const ref = db.collection("nilai_raport_siswa").doc(String(siswa.nisn));
-                            batch.delete(ref);
-                        });
-                        await batch.commit();
-                    }
+                    const { ref, update } = window.FirebaseModules;
+                    const deletes = {};
+                    siswaDenganNilai.forEach(siswa => {
+                        deletes["nilai_raport_siswa/" + String(siswa.nisn)] = null;
+                    });
+                    await update(ref(db), deletes);
                 }
 
                 masterSiswa.forEach(siswa => { siswa.nilai = null; });
@@ -1073,45 +1186,8 @@
 
         function logoutOperator() {
             isOperatorLoggedIn = false;
-            document.getElementById("modalConfig").classList.add("hidden");
             switchTab('siswa');
             showToast("Anda telah keluar dari Mode Operator.", "info");
-        }
-
-        function toggleConfigModal() {
-            if (!isOperatorLoggedIn) {
-                showToast("Konfigurasi Firebase hanya tersedia di Mode Operator.", "error");
-                return;
-            }
-
-            const modal = document.getElementById("modalConfig");
-            modal.classList.toggle("hidden");
-            if (!modal.classList.contains("hidden")) {
-                const currentConfig = localStorage.getItem("FIREBASE_CONFIG_RAPOR");
-                if (currentConfig) document.getElementById("txtFirebaseConfig").value = currentConfig;
-            }
-        }
-
-        function saveFirebaseConfig() {
-            const txt = document.getElementById("txtFirebaseConfig").value.trim();
-            if (txt) {
-                try {
-                    JSON.parse(txt);
-                    localStorage.setItem("FIREBASE_CONFIG_RAPOR", txt);
-                    showToast("Konfigurasi disimpan. Memuat ulang...", "success");
-                    setTimeout(() => location.reload(), 1200);
-                } catch(e) {
-                    showToast("Format JSON Config tidak valid!", "error");
-                }
-            } else {
-                showToast("Masukkan konfig JSON Firebase terlebih dahulu.", "error");
-            }
-        }
-
-        function resetDefaultFirebase() {
-            localStorage.removeItem("FIREBASE_CONFIG_RAPOR");
-            showToast("Kembali ke mode default.", "info");
-            setTimeout(() => location.reload(), 1000);
         }
 
         function showToast(message, type = "info") {
@@ -1133,6 +1209,26 @@
             toast.classList.remove("translate-y-20", "opacity-0");
             setTimeout(() => { toast.classList.add("translate-y-20", "opacity-0"); }, 3000);
         }
+
+        // Event handler inline di HTML membutuhkan fungsi pada window karena
+        // aplikasi utama sekarang menggunakan ES module.
+        Object.assign(window, {
+            calculateAverages,
+            closeOperatorModal,
+            downloadFormatLagerExcel,
+            editSiswaOperator,
+            handleCariNISN,
+            handleImportMasterExcel,
+            handleSimpanNilai,
+            hapusNilaiSiswaOperator,
+            hapusSemuaNilaiOperator,
+            logoutOperator,
+            openOperatorModal,
+            renderTabelRekapOperator,
+            selesaiInputSiswa,
+            submitPinOperator,
+            switchTab
+        });
 
         window.addEventListener("DOMContentLoaded", () => {
             initFirebase();
